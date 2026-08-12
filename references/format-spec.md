@@ -72,9 +72,11 @@ Spacing: entries follow one another directly (merge-block to merge-block). Leave
 
 Rename discipline-specific headers sensibly for non-surgeons (e.g. "Education and Surgical Training" → "Education and Clinical Training") only if the user approves; default is to keep headers verbatim.
 
-## 7. Safe row insertion/deletion (openpyxl)
+## 7. Safe editing (openpyxl hazards)
 
-openpyxl's `insert_rows`/`delete_rows` corrupt this file's merge map (off-by-one shifts, lost anchor values). Always:
+**Printer settings are load-bearing — never lose them.** The workbook embeds `xl/printerSettings/printerSettings1.bin` (referenced from `<pageSetup r:id=…>`), which carries the paper size and printer configuration Excel uses to compute rows-per-page. **openpyxl silently drops this part on save.** Without it, Excel recomputes page capacity against the local default printer and every page break lands wrong, even when break positions are correct. After ANY openpyxl save, restore it by zip surgery: copy the .bin part back in, re-add its relationship in `xl/worksheets/_rels/sheet1.xml.rels`, re-attach `r:id` to `<pageSetup>` (declare `xmlns:r` inline on the element — openpyxl does not declare it on the worksheet root), and ensure `[Content_Types].xml` has the `bin` → printerSettings Default entry. When creating a NEW workbook from the template, carry the template's printerSettings part forward the same way.
+
+openpyxl's `insert_rows`/`delete_rows` also corrupt this file's merge map (off-by-one shifts, lost anchor values). Always:
 
 1. Snapshot all merged ranges; `unmerge_cells` every one.
 2. Perform insertions/deletions bottom-up (highest row index first).
@@ -82,3 +84,8 @@ openpyxl's `insert_rows`/`delete_rows` corrupt this file's merge map (off-by-one
 4. Rebuild `ws.row_breaks` the same way (openpyxl never shifts page breaks).
 5. Set `row_dimensions[r].height = 22.0` on new rows; copy cell styles with `copy.copy` per attribute (font, alignment, border, fill, number_format, protection) from a sibling entry.
 6. Verify after save: merge count, numbering continuity, breaks list, and that anchor values (subheaders) survived.
+7. Verify the printerSettings part survived (see above) — it never does; restore it.
+
+## 8. Pagination rules
+
+Page capacity is set by the embedded printer settings; empirically the canonical layout fits **60 rows of 22 pt per page**. Take pagination fully manual: place a `<brk>` every ≤60 rows at a safe boundary — a blank row or the last row of a merge block, never the first row of a two-row merge, and never leaving a section/subsection header as the last content on a page. Verify by rendering to PDF and checking every boundary.
