@@ -33,7 +33,7 @@ Work on a copy of `assets/template.xlsx` with openpyxl. Follow `format-spec.md` 
 - Citation conventions (§5): AMA-style, bold nothing, asterisk convention for presenters/equal authorship noted at section top right (column D).
 - The date cell stays `=TODAY()` — never a literal date.
 
-Insert rows with the unmerge-all → insert → re-merge-with-offset pattern described in §7 — openpyxl's automatic merge shifting corrupts this file class. Never let a LibreOffice re-save touch the deliverable (it rewrites formatting internals); LibreOffice is for PDF preview only.
+Insert rows with the unmerge-all → insert → re-merge-with-offset pattern described in §7 — openpyxl's automatic merge shifting corrupts this file class. **After any openpyxl save, restore the embedded printerSettings part (§7) — openpyxl silently drops it, and without it Excel recomputes page capacity and every break prints wrong.** Never let a LibreOffice re-save touch the deliverable (it rewrites formatting internals); LibreOffice is for PDF preview only.
 
 ## Step 3 — Page breaks and print QA
 
